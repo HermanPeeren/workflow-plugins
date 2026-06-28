@@ -143,7 +143,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
         $modelName = $component->getModelName($context);
 
         $table = $component->getMVCFactory()->createModel($modelName, $this->getApplication()->getName(), ['ignore_request' => true])
-            ->getTable();
+            ->getTable();// HP: idem directly get thew Table from the MVCFactory, see line 260; but this modelName is more general than there.
 
         $fieldname = $table->getColumnAlias('catid');
 
@@ -226,8 +226,8 @@ final class Category extends CMSPlugin implements SubscriberInterface
         }
 
         $errors = 0;
-
-        foreach ($pks as $pk) {
+        //HP: this loop boots com_content at every call to get the table.
+        foreach ($pks as $pk) { // HP: processArticle is not static, so use $this-> instead of self::
             if (!self::processArticle($pk, $categoryId)) {
                 $errors++;
             }
@@ -254,10 +254,10 @@ final class Category extends CMSPlugin implements SubscriberInterface
 
         try {
             $component = $this->getApplication()->bootComponent('com_content');
-            $modelName = $component->getModelName('com_workflow.article');
+            $modelName = $component->getModelName('com_workflow.article'); // HP: not necessary, leave out
 
             $articleTable = $component->getMVCFactory()->createModel($modelName, $this->getApplication()->getName(), ['ignore_request' => true])
-                ->getTable();
+                ->getTable(); // HP: directly: $articleTable = $component->getMVCFactory()->createTable('Article', 'Administrator');
             if (!$articleTable->load($pk)) {
                 $app->enqueueMessage(Text::sprintf('PLG_WORKFLOW_CATEGORY_ARTICLE_NOT_FOUND', $pk), 'warning');
                 return false;
@@ -271,7 +271,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
             if ($categoryId && $categoryId > 0) {
                 $articleTable->catid = $categoryId;
             }
-
+            // HP: don't understand the next two lines: if cloned, then they will already be the same, not?
             $articleTable->modified    = $originalData->modified;
             $articleTable->modified_by = $originalData->modified_by;
 

@@ -14,7 +14,7 @@
                 filter="integer"
                 default=""
                 hide_all="true"
-                >
+                ><!-- HP: what is that hide_all attribute? -->
                 <option value="">JOPTION_DO_NOT_USE</option>
             </field>
         </fieldset>
