@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension type="plugin" group="workflow" method="upgrade">
 	<name>plg_workflow_notificationext</name>
-	<author>Joomla! Project</author>
-	<creationDate>2020-05</creationDate>
-	<copyright>(C) 2020 Open Source Matters, Inc.</copyright>
-	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
-	<authorEmail>admin@joomla.org</authorEmail>
-	<authorUrl>www.joomla.org</authorUrl>
-	<version>4.0.0</version>
+	<author>Herman Peeren, Yepr</author>
+	<creationDate>2026-06</creationDate>
+	<copyright>(C) 2026 Herman Peeren, Yepr</copyright>
+	<license>GNU General Public License version 3; see LICENSE.txt</license>
+	<authorEmail>herman@yepr.nl</authorEmail>
+	<authorUrl>yepr.nl</authorUrl>
+	<version>1.0.0</version>
 	<description>PLG_WORKFLOW_NOTIFICATIONEXT_XML_DESCRIPTION</description>
 	<namespace path="src">Yepr\Plugin\Workflow\Notificationext</namespace>
 	<files>
