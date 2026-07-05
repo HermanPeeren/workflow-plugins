@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="plugin" group="workflow" method="upgrade">
+	<name>plg_workflow_revision</name>
+	<author>Herman Peeren, Yepr</author>
+	<creationDate>2026-06</creationDate>
+	<copyright>(C) 2026 Herman Peeren, Yepr</copyright>
+	<license>GNU General Public License version 3; see LICENSE.txt</license>
+	<authorEmail>herman@yepr.nl</authorEmail>
+	<authorUrl>yepr.nl</authorUrl>
+	<version>1.0.0</version>
+	<description>PLG_WORKFLOW_REVISION_XML_DESCRIPTION</description>
+	<namespace path="src">Yepr\Plugin\Workflow\Revision</namespace>
+	<files>
+		<folder>forms</folder>
+		<folder plugin="revision">services</folder>
+		<folder>sql</folder>
+		<folder>src</folder>
+	</files>
+	<languages>
+		<language tag="en-GB">language/en-GB/plg_workflow_revision.ini</language>
+		<language tag="en-GB">language/en-GB/plg_workflow_revision.sys.ini</language>
+	</languages>
+	<install>
+		<sql>
+			<file driver="mysql" charset="utf8">sql/install.mysql.sql</file>
+		</sql>
+	</install>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field
+					name="allowedlist"
+					type="WorkflowComponentSections"
+					label="JWORKFLOW_EXTENSION_ALLOWED_LABEL"
+					description="JWORKFLOW_EXTENSION_ALLOWED_DESCRIPTION"
+					multiple="multiple"
+					layout="joomla.form.field.list-fancy-select"
+				/><!--default: only com_content.article -->
+				<field
+					name="forbiddenlist"
+					type="WorkflowComponentSections"
+					label="JWORKFLOW_EXTENSION_FORBIDDEN_LABEL"
+					description="JWORKFLOW_EXTENSION_FORBIDDEN_DESCRIPTION"
+					multiple="multiple"
+					layout="joomla.form.field.list-fancy-select"
+				/>
+			</fieldset><fieldset
+				name="revision_categories"
+				label="PLG_WORKFLOW_REVISION_CATEGORIES_LABEL"
+		>
+			<field
+					name="revision_draft_category_id"
+					type="category"
+					label="PLG_WORKFLOW_REVISION_DRAFT_CATEGORY_LABEL"
+					description="PLG_WORKFLOW_REVISION_DRAFT_CATEGORY_DESC"
+					extension="com_content"
+					filter="integer"
+					default=""
+			>
+				<option value="">PLG_WORKFLOW_REVISION_DRAFT_CATEGORY_CHOOSE</option>
+			</field>
+			<field
+					name="revision_review_category_id"
+					type="category"
+					label="PLG_WORKFLOW_REVISION_REVIEW_CATEGORY_LABEL"
+					description="PLG_WORKFLOW_REVISION_REVIEW_CATEGORY_DESC"
+					extension="com_content"
+					filter="integer"
+					default=""
+			>
+				<option value="">PLG_WORKFLOW_REVISION_REVIEW_CATEGORY_CHOOSE</option>
+			</field>
+		</fieldset>
+		</fields>
+	</config>
+
+</extension>

@@ -4,8 +4,8 @@
  * @package     Joomla.Plugin
  * @subpackage  Workflow.notificationext
  *
- * @copyright   (C) 2020 Open Source Matters, Inc. <https://www.joomla.org>
- * @license     GNU General Public License version 2 or later; see LICENSE.txt
+ * @copyright   (C) 2026 Herman Peeren, Yepr
+ * @license     GNU General Public License version 3; see LICENSE.txt
  */
 
 namespace Yepr\Plugin\Workflow\Notificationext\Extension;

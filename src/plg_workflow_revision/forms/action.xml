@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<form>
+    <fields name="options">
+        <fieldset
+            name="actions"
+            label="COM_WORKFLOW_TRANSITION_ACTIONS_LABEL"
+            >
+            <field
+                name="revision_category"
+                type="list"
+                label="PLG_WORKFLOW_REVISION_ACTION_CHOOSE_CATEGORY_LABEL"
+                description="PLG_WORKFLOW_REVISION_ACTION_CHOOSE_CATEGORY_DESC"
+                default="0"
+            >
+                <option value="0">PLG_WORKFLOW_REVISION_ACTION_OPTION_NO_REVISION</option>
+                <option value="draft">PLG_WORKFLOW_REVISION_ACTION_OPTION_DRAFT</option>
+                <option value="review">PLG_WORKFLOW_REVISION_ACTION_OPTION_REVIEW</option>
+                <option value="approved">PLG_WORKFLOW_REVISION_ACTION_OPTION_APPROVED</option>
+            </field>
+        </fieldset>
+    </fields>
+</form>
