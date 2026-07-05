@@ -42,13 +42,13 @@ final class Category extends CMSPlugin implements SubscriberInterface
      * @var    boolean
      * @since  __DEPLOY_VERSION__
      */
-    protected $autoloadLanguage = true;
+    protected $autoloadLanguage = true; // needed?
 
     /**
      * @var  CMSApplication
      * @since  __DEPLOY_VERSION__
      */
-    protected $app;
+    protected $app; // Not needed; leave out.
 
     /**
      * Returns an array of events this subscriber will listen to.
@@ -254,7 +254,8 @@ final class Category extends CMSPlugin implements SubscriberInterface
 
         try {
             $component = $this->getApplication()->bootComponent('com_content');
-            $modelName = $component->getModelName('com_workflow.article'); // HP: not necessary, leave out
+            $modelName = $component->getModelName('com_workflow.article'); // HP: not necessary, leave out.
+            // And: why com_workflow as first part? And: getModelName() is ContentComponent-specific.
 
             $articleTable = $component->getMVCFactory()->createModel($modelName, $this->getApplication()->getName(), ['ignore_request' => true])
                 ->getTable(); // HP: directly: $articleTable = $component->getMVCFactory()->createTable('Article', 'Administrator');
@@ -272,6 +273,8 @@ final class Category extends CMSPlugin implements SubscriberInterface
                 $articleTable->catid = $categoryId;
             }
             // HP: don't understand the next two lines: if cloned, then they will already be the same, not?
+            //     and during store(), next after these lines, the modified and modified_by will be set to
+            //     now and current user id (what these assignments want to prevent).
             $articleTable->modified    = $originalData->modified;
             $articleTable->modified_by = $originalData->modified_by;
 
