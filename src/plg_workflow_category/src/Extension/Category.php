@@ -161,7 +161,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
      *
      * @param   DisplayEvent  $event
      *
-     * @return  void
+     * @return  void // HP: add return type to method
      *
      * @since   __DEPLOY_VERSION__
      */
@@ -295,7 +295,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
      *
      * @param   string  $context
      *
-     * @return   boolean
+     * @return   boolean// HP: add return type to method
      *
      * @since   __DEPLOY_VERSION__
      */
