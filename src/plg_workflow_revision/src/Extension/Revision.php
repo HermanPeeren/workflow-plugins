@@ -84,9 +84,9 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @param   Model\PrepareFormEvent   $event  The event
      *
-     * @return   boolean
+     * @return   void
      */
-    public function onContentPrepareForm(Model\PrepareFormEvent $event)
+    public function onContentPrepareForm(Model\PrepareFormEvent $event):void
     {
         $form    = $event->getForm();
         $data    = $event->getData();
@@ -96,8 +96,6 @@ final class Revision extends CMSPlugin implements SubscriberInterface
         if ($context === 'com_workflow.transition') {
             $this->enhanceWorkflowTransitionForm($form, $data);
         }
-
-        return true;
     }
 
     /**
@@ -107,7 +105,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return   void
      */
-    public function onWorkflowAfterTransition(WorkflowTransitionEvent $event)
+    public function onWorkflowAfterTransition(WorkflowTransitionEvent $event):void
     {
         $context = $event->getArgument('extension');
         // should check if valid context com_extensionname.tablename and there must be a category id in the table
@@ -161,7 +159,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return void
      */
-    private function setRevisionCategory(string $context, int $pk, string $revisionCategory)
+    private function setRevisionCategory(string $context, int $pk, string $revisionCategory):void
     {
         list($componentName, $tableName)  = explode('.', $context);
         $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->getTable($tableName);
@@ -185,7 +183,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return object|null
      */
-    private function revisionInfoOriginal(string $context, int $originalId)
+    private function revisionInfoOriginal(string $context, int $originalId):object|null
     {
         $db = $this->getDatabase();
         $query = $db->getQuery(true)
@@ -208,7 +206,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return object|null
      */
-    private function revisionInfoCopy($context, $copiedId)
+    private function revisionInfoCopy($context, $copiedId):object|null
     {
 	    $db = $this->getDatabase();
 	    $query = $db->getQuery(true)
@@ -231,7 +229,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return void
      */
-    private function copyItemToDraft($context, $originalId)
+    private function copyItemToDraft($context, $originalId):void
     {
 		// Get the original item
 	    list($componentName, $tableName)  = explode('.', $context);
@@ -276,23 +274,63 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      *  @return void
      */
-	private function copyReviewToOriginal($context, $copyId)
+	private function copyReviewToOriginal($context, $copyId):void
     {
         // Get the info about the revised item and the original item
 	    $revisionInfo = $this->revisionInfoCopy($context, $copyId);
 
 		// Get the table object
+	    list($componentName, $tableName)  = explode('.', $context);
+	    $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->getTable($tableName);
 
 	    // Get the original item
+		$originalItem = clone($table)->load($revisionInfo->original_id);
 
 	    // Get the revised item
+		$copyItem = clone($table)->load($copyId);
 
 	    // Copy the id, category, created_by and created from the original item to the revised + store
+	    $catColumn       = $table->getColumnAlias('catid');
+	    $createdByColumn = $table->getColumnAlias('created_by');
+	    $createdColumn   = $table->getColumnAlias('created');
 
-	    // Change the versions of the copy to the original
+	    $copyItem->id               = $originalItem->id;
+	    $copyItem->$catColumn       = $originalItem->$catColumn;
+	    $copyItem->$createdByColumn = $originalItem->$createdByColumn;
+	    $copyItem->$createdColumn   = $originalItem->$createdColumn;
 
-	    // Delete the revision item
+		$copyItem->store();
 
+	    // Change the history (versions) of the copy to the original
+	    // item_id = '<extensionName>.<tableName>.<id>'. Set from copyId to originalId.
+	    $originalItemId = $context . '.' . $originalItem->id;
+	    $copyItemId     = $context . '.' . $copyId;
+
+	    $db = $this->getDatabase();
+	    $query = $db->getQuery(true)
+		    ->update($db->quoteName('#__history'))
+		    ->set([
+			    $db->quoteName('item_id') . ' = :originalItemId',
+			    $db->quoteName('is_current') . ' = 1'
+		    ])
+		    ->where($db->quoteName('item_id') . ' = :copyItemId')
+		    ->bind(':originalItemId', $originalItemId)
+		    ->bind(':copyItemId', $copyItemId);
+
+	    $db->setQuery($query);
+		$db->execute();
+
+	    // Delete the revision info record of this revision
+	    $query = $db->getQuery(true)
+		    ->delete($db->quoteName('#__revision_copy_original'))
+		    ->where($db->quoteName('copy_id') . ' = :copyItemId')
+		    ->bind(':copyItemId', $copyItemId);
+
+	    $db->setQuery($query);
+	    $db->execute();
+
+	    // Delete the revision item (load the copy again, for it was set to the new article)
+	    $table->load($copyId)->delete();
     }
 
 
@@ -303,7 +341,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return   boolean
      */
-    protected function isSupported($context)
+    protected function isSupported($context):bool
     {
         if (!$this->checkAllowedAndForbiddenlist($context)) {
             return false;
