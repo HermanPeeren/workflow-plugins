@@ -55,6 +55,11 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      * @var    integer
      */
     private $currentUserId = 0;
+	/**
+	 * The id of the stage we are going to.
+	 * @var integer
+	 */
+	private $toStageId;
 
 
     /**
@@ -64,7 +69,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      */
     protected $autoloadLanguage = true;
 
-    /**
+	/**
      * Returns an array of events this subscriber will listen to.
      *
      * @return   array
@@ -125,6 +130,8 @@ final class Revision extends CMSPlugin implements SubscriberInterface
             $this->revisionReviewCategoryId = $this->params->get('revision_review_category_id');
             // Set the current user id; this user will edit the draft
             $this->currentUserId = $this->getApplication()->getIdentity()->id;
+			// Set the stage_id we are going to.
+	        $this->toStageId = $transition->to_stage_id;
 
             // For all item primary keys
             foreach ($pks as $pk) {
@@ -162,7 +169,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     private function setRevisionCategory(string $context, int $pk, string $revisionCategory):void
     {
         list($componentName, $tableName)  = explode('.', $context);
-        $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->getTable($tableName);
+        $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->createTable($tableName);
         $table->load($pk);
         $catColumn = $table->getColumnAlias('catid');
 		switch($revisionCategory)
@@ -187,11 +194,11 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     {
         $db = $this->getDatabase();
         $query = $db->getQuery(true)
-	        ->select($db->quoteName('*'))
+	        ->select($db->quote('*'))
 	        ->from($db->quoteName('#__revision_copy_original'))
 	        ->where($db->quoteName('context') . ' = :context')
 	        ->where($db->quoteName('original_id') . ' = :originalId')
-	        ->bind(':originalId', $context)
+	        ->bind(':context', $context)
 	        ->bind(':originalId', $originalId, ParameterType::INTEGER);
 	    $db->setQuery($query);
 
@@ -210,11 +217,11 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     {
 	    $db = $this->getDatabase();
 	    $query = $db->getQuery(true)
-		    ->select($db->quoteName('*'))
+		    ->select($db->quote('*'))
 		    ->from($db->quoteName('#__revision_copy_original'))
 		    ->where($db->quoteName('context') . ' = :context')
 		    ->where($db->quoteName('copy_id') . ' = :copyId')
-		    ->bind(':copyId', $context)
+		    ->bind(':context', $context)
 		    ->bind(':copyId', $copyId, ParameterType::INTEGER);
 	    $db->setQuery($query);
 
@@ -223,6 +230,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 
     /**
      * Make a copy of an item to the Revision Draft category
+     * Create via a Table, and add the new item to the workflow_associations table.
      *
      * @param string  $context
      * @param integer $id
@@ -233,7 +241,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     {
 		// Get the original item
 	    list($componentName, $tableName)  = explode('.', $context);
-	    $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->getTable($tableName);
+	    $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->createTable($tableName);
 	    $table->load($originalId);
 
 	    $catColumn       = $table->getColumnAlias('catid');
@@ -252,6 +260,16 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 
 	    // Get the new item ID of the copy
 	    $copyId = $table->id;
+
+		// Store the new item in the workflow associations table
+	    $revisionInfo = (object) [
+		    'item_id'   => $copyId,
+		    'stage_id'  => $this->toStageId,
+		    'extension' => $context
+	    ];
+
+	    $db = $this->getDatabase();
+	    $db->insertObject('#__workflow_associations', $revisionInfo);
 
 		// Store info about the original and the new copy in the revision table
 	    $revisionInfo = (object) [
@@ -281,7 +299,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 
 		// Get the table object
 	    list($componentName, $tableName)  = explode('.', $context);
-	    $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->getTable($tableName);
+	    $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->createTable($tableName);
 
 	    // Get the original item
 		$originalItem = clone($table)->load($revisionInfo->original_id);
@@ -320,10 +338,23 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	    $db->setQuery($query);
 		$db->execute();
 
+	    // Delete workflow associations record of this revision
+	    $query = $db->getQuery(true)
+		    ->delete($db->quoteName('#__workflow_associations'))
+		    ->where($db->quoteName('extension') . ' = :context')
+		    ->where($db->quoteName('item_id') . ' = :copyItemId')
+		    ->bind(':context', $context)
+		    ->bind(':copyItemId', $copyItemId);
+
+	    $db->setQuery($query);
+	    $db->execute();
+
 	    // Delete the revision info record of this revision
 	    $query = $db->getQuery(true)
 		    ->delete($db->quoteName('#__revision_copy_original'))
+		    ->where($db->quoteName('context') . ' = :context')
 		    ->where($db->quoteName('copy_id') . ' = :copyItemId')
+		    ->bind(':context', $context)
 		    ->bind(':copyItemId', $copyItemId);
 
 	    $db->setQuery($query);
