@@ -80,7 +80,8 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     {
         return [
             'onContentPrepareForm'      => 'onContentPrepareForm',
-            'onWorkflowAfterTransition' => 'onWorkflowAfterTransition',
+            'onWorkflowBeforeTransition' => 'onWorkflowBeforeTransition',
+            'onWorkflowAfterTransition' => 'onWorkflowAfterTransition'
         ];
     }
 
@@ -104,7 +105,62 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     }
 
     /**
-     * Copy original article and put the copied article in the correct revision category.
+     * If applicable (no copy of the item yet, and we want a draft state):
+     *    - Copy original article.
+     *    - Put the copied article in the Revision Draft category + Revision Draft stage.
+     *    - Don't do the transition (for the original article's stage must not be changed).
+     *
+     * @param   WorkflowTransitionEvent  $event  The workflow event being processed.
+     *
+     * @return   void
+     */
+    public function onWorkflowBeforeTransition(WorkflowTransitionEvent $event):void
+    {
+        $context = $event->getArgument('extension');
+        // should check if valid context com_extensionname.tablename and there must be a category id in the table
+        $extensionName = $event->getArgument('extensionName');
+        $transition = $event->getArgument('transition');
+        $pks = $event->getArgument('pks');
+
+        if (!$this->isSupported($context)) {
+            return;
+        }
+
+        // Proceed if we manage a revision
+        if ($revisionCategory = $transition->options['revision_category']) {
+            // Initialisation
+            // Set the id of the Revision Draft and the Revision Review category from the plugin's parameters
+            $this->revisionDraftCategoryId  = $this->params->get('revision_draft_category_id');
+            $this->revisionReviewCategoryId = $this->params->get('revision_review_category_id');
+            // Set the current user id; this user will edit the draft
+            $this->currentUserId = $this->getApplication()->getIdentity()->id;
+			// Set the stage_id we are going to.
+	        $this->toStageId = $transition->to_stage_id;
+
+            // For all item primary keys
+            foreach ($pks as $pk) {
+                // If this item is not in the revision table, $revisionInfoPkOriginal and $revisionInfoPkCopy will be null
+                $revisionInfoPkOriginal = $this->revisionInfoOriginal($context, $pk);
+                $revisionInfoPkCopy     = $this->revisionInfoCopy($context, $pk);
+				$notInRevisionInfo = false;
+				if (is_null($revisionInfoPkOriginal) && (is_null($revisionInfoPkCopy))) {
+					$notInRevisionInfo = true;
+				}
+
+                // If we go to a Draft stage, we have to make a copy of the original if it doesn't exist yet
+                if (($revisionCategory === 'draft')  && $notInRevisionInfo) {
+                    // Make a copy of the original article
+                    $this->copyItemToDraft($context, $pk);
+
+					// Don't transition the original article
+	                $event->setStopTransition(); // gives an error message "unable to run transition"
+                }
+            }
+        }
+    }
+
+    /**
+     * Put the copied article in the correct revision category (or copy back to original).
      *
      * @param   WorkflowTransitionEvent  $event  The workflow event being processed.
      *
@@ -133,24 +189,20 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 			// Set the stage_id we are going to.
 	        $this->toStageId = $transition->to_stage_id;
 
-            // For all item primary keys
+            // For all item primary keys (which must be keys of copied items)
             foreach ($pks as $pk) {
-                // If this item is not in the revision table, $revisionInfoPk will be null
-                $revisionInfoPk = $this->revisionInfoOriginal($context, $pk);
+                // This copied item must be in the revision table
+                if (!is_null($this->revisionInfoCopy($context, $pk))) {
 
-                // If we go to a Draft stage, we have to make a copy of the original if it doesn't exist yet
-                if (($revisionCategory === 'draft')  && (is_null($revisionInfoPk))) {
-                    // Make a copy of the original article
-                    $this->copyItemToDraft($context, $pk);
-                }
-                else {
-                    // If the item is approved after review, it can be copied back over the original item
-                    if ($revisionCategory === 'approved') {
-                        $this->copyReviewToOriginal($context, $pk);
+	                // If the item is approved after review, it can be copied back over the original item
+                    if ($revisionCategory === 'approved')
+                    {
+	                    $this->copyReviewToOriginal($context, $pk);
                     }
-                    else {
-                        // Put in the Revision Draft or Revision Review Category
-                        $this->setRevisionCategory($context, $pk, $revisionCategory);
+                    else
+                    {
+	                    // Put in the Revision Draft or Revision Review Category
+	                    $this->setRevisionCategory($context, $pk, $revisionCategory);
                     }
                 }
             }
@@ -172,14 +224,15 @@ final class Revision extends CMSPlugin implements SubscriberInterface
         $table = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->createTable($tableName);
         $table->load($pk);
         $catColumn = $table->getColumnAlias('catid');
-		switch($revisionCategory)
-		{
-			case 'draft':  $catcolumn = $this->revisionDraftCategoryId; break;
-			case 'review': $catcolumn = $this->revisionReviewCategoryId; break;
-        }
-        if ($revisionCategory && $revisionCategory > 0) {
-            $table->$catColumn = $revisionCategory;
-        }
+	    $catid=0;
+	    switch($revisionCategory)
+	    {
+		    case 'draft':  $catid = $this->revisionDraftCategoryId; break;
+		    case 'review': $catid = $this->revisionReviewCategoryId; break;
+	    }
+	    if ($revisionCategory && $catid > 0) {
+		    $table->$catColumn = $catid;
+	    }
     }
 
     /**
@@ -213,7 +266,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
      *
      * @return object|null
      */
-    private function revisionInfoCopy($context, $copiedId):object|null
+    private function revisionInfoCopy($context, $copyId):object|null
     {
 	    $db = $this->getDatabase();
 	    $query = $db->getQuery(true)
@@ -342,9 +395,9 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	    $query = $db->getQuery(true)
 		    ->delete($db->quoteName('#__workflow_associations'))
 		    ->where($db->quoteName('extension') . ' = :context')
-		    ->where($db->quoteName('item_id') . ' = :copyItemId')
+		    ->where($db->quoteName('item_id') . ' = :copyId')
 		    ->bind(':context', $context)
-		    ->bind(':copyItemId', $copyItemId);
+		    ->bind(':copyId', $copyId);
 
 	    $db->setQuery($query);
 	    $db->execute();
@@ -353,15 +406,16 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	    $query = $db->getQuery(true)
 		    ->delete($db->quoteName('#__revision_copy_original'))
 		    ->where($db->quoteName('context') . ' = :context')
-		    ->where($db->quoteName('copy_id') . ' = :copyItemId')
+		    ->where($db->quoteName('copy_id') . ' = :copyId')
 		    ->bind(':context', $context)
-		    ->bind(':copyItemId', $copyItemId);
+		    ->bind(':copyId', $copyId);
 
 	    $db->setQuery($query);
 	    $db->execute();
 
 	    // Delete the revision item (load the copy again, for it was set to the new article)
-	    $table->load($copyId)->delete();
+	    $table->load($copyId);
+	    $table->delete();
     }
 
 
