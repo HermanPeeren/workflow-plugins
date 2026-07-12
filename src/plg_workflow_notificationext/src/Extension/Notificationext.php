@@ -161,15 +161,6 @@ final class Notificationext extends CMSPlugin implements SubscriberInterface
             unset($userIds[$key]);
         }
 
-        // Add original author to recepients, if applicable
-        if ($transition->options['notification_send_author']) {
-            // Get the author id
-            // todo: multiple possible, because you can have multiple pks (batch processing)
-
-            // merge the authorId with the other user
-            $userIds = array_unique(array_merge($userIds, $authorId));
-        }
-
         // Remove users with locked input box from the list of receivers
         if (!empty($userIds)) {
             $userIds = $this->removeLocked($userIds);
@@ -209,8 +200,18 @@ final class Notificationext extends CMSPlugin implements SubscriberInterface
                 $title = !empty($item->title) ? $item->title : $title;
             }
 
-            // Send Email to receivers
-            foreach ($userIds as $user_id) {
+	        // Add original author to recipients, if applicable
+	        if ($transition->options['notification_send_author'] && !empty($item)) {
+		        // Get the author id
+		        $authorId = (array) $item->created_by;
+
+		        // merge the authorId with the other user
+		        $userIdsPlus = array_unique(array_merge($userIds, $authorId));
+	        }
+
+
+	        // Send Email to receivers
+            foreach ($userIdsPlus as $user_id) {
                 $receiver = $this->getUserFactory()->loadUserById($user_id);
 
                 if ($receiver->authorise('core.manage', 'com_messages')) {
