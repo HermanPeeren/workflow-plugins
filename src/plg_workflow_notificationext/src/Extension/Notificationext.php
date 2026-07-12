@@ -200,15 +200,20 @@ final class Notificationext extends CMSPlugin implements SubscriberInterface
                 $title = !empty($item->title) ? $item->title : $title;
             }
 
+			$userIdsPlus = $userIds;
 	        // Add original author to recipients, if applicable
 	        if ($transition->options['notification_send_author'] && !empty($item)) {
 		        // Get the author id
 		        $authorId = (array) $item->created_by;
 
+		        // Remove users with locked input box from the added list (currently only one)
+		        if (!empty($authorId)) {
+			        $authorId = $this->removeLocked($authorId);
+		        }
+
 		        // merge the authorId with the other user
 		        $userIdsPlus = array_unique(array_merge($userIds, $authorId));
 	        }
-
 
 	        // Send Email to receivers
             foreach ($userIdsPlus as $user_id) {
