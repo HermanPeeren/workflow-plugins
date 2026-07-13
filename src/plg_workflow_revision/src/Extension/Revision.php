@@ -366,8 +366,7 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	    $query = $db->getQuery(true)
 		    ->update($db->quoteName('#__history'))
 		    ->set([
-			    $db->quoteName('item_id') . ' = :originalItemId',
-			    $db->quoteName('is_current') . ' = 0'
+			    $db->quoteName('item_id') . ' = :originalItemId'
 		    ])
 		    ->where($db->quoteName('item_id') . ' = :copyItemId')
 		    ->bind(':originalItemId', $originalItemId)
@@ -375,7 +374,47 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 
 	    $db->setQuery($query);
 		$db->execute();
-	    // todo: only last version of original should be is_current=1 (a prior one should be set to 0)
+
+		// Only last version of original versions should be is_current=1 (a prior one should be set to 0)
+	    // Could be done with a CASE statement and a subquery.
+	    // --- Now with Joomla's database query in 3 parts:
+
+	    // 1. Set all is_current from this item to 0
+	    $query = $db->getQuery(true)
+		    ->update($db->quoteName('#__history'))
+		    ->set([
+			    $db->quoteName('is_current') . ' = 0'
+		    ])
+		    ->where($db->quoteName('item_id') . ' = :originalItemId')
+		    ->bind(':originalItemId', $originalItemId);
+
+	    $db->setQuery($query);
+	    $db->execute();
+
+	    // 2. Get the maximum date of this item
+	    $query = $db->getQuery(true)
+		    ->select('MAX(' . $db->quoteName('save_date'). ')')
+		    ->from($db->quoteName('#__history'))
+		    ->where($db->quoteName('item_id') . ' = :originalItemId')
+		    ->bind(':originalItemId', $originalItemId);
+
+	    $db->setQuery($query);
+	    $maxDate = $db->loadResult();
+
+	    // 3. Set the is_current for this item's maximum date on 1
+	    $query = $db->getQuery(true)
+		    ->update($db->quoteName('#__history'))
+		    ->set([
+			    $db->quoteName('is_current') . ' = 1'
+		    ])
+		    ->where($db->quoteName('save_date') . ' = :maxDate')
+		    ->where($db->quoteName('item_id') . ' = :originalItemId')
+		    ->bind(':maxDate', $maxDate)
+		    ->bind(':originalItemId', $originalItemId);
+
+	    $db->setQuery($query);
+	    $db->execute();
+	    // --- End of update is_current
 
 	    // Delete workflow associations record of this revision
 	    $query = $db->getQuery(true)
@@ -403,7 +442,6 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	    $table->load($copyId);
 	    $table->delete();
     }
-
 
     /**
      * Check if the current plugin should execute workflow related activities
