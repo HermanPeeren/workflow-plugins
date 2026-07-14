@@ -154,12 +154,19 @@ final class Notificationext extends CMSPlugin implements SubscriberInterface
         $modelName = $component->getModelName($context);
         $model     = $component->getMVCFactory()->createModel($modelName, $this->getApplication()->getName(), ['ignore_request' => true]);
 
-        // Don't send the notificationext to the active user
-        $key = array_search($user->id, $userIds);
+	    // Add id of the current user to recipients, if applicable
+	    if ($transition->options['notification_send_current_user']) {
+		    // Add the id of the current user
+		    $userIds[] = $user->id;
+	    }
+		else {
+			// Don't send the notification to the active user
+			$key = array_search($user->id, $userIds);
+			if (\is_int($key)) {
+				unset($userIds[$key]);
+			}
+		}
 
-        if (\is_int($key)) {
-            unset($userIds[$key]);
-        }
 
         // Remove users with locked input box from the list of receivers
         if (!empty($userIds)) {
@@ -200,20 +207,26 @@ final class Notificationext extends CMSPlugin implements SubscriberInterface
                 $title = !empty($item->title) ? $item->title : $title;
             }
 
-			$userIdsPlus = $userIds;
+	        $extraRecipients = [];
 	        // Add original author to recipients, if applicable
 	        if ($transition->options['notification_send_author'] && !empty($item)) {
 		        // Get the author id
-		        $authorId = (array) $item->created_by;
-
-		        // Remove users with locked input box from the added list (currently only one)
-		        if (!empty($authorId)) {
-			        $authorId = $this->removeLocked($authorId);
-		        }
-
-		        // merge the authorId with the other user
-		        $userIdsPlus = array_unique(array_merge($userIds, $authorId));
+		        $extraRecipients[] = $item->created_by;
 	        }
+
+	        // Add id of the last modifier to recipients, if applicable
+	        if ($transition->options['notification_send_modified'] && !empty($item)) {
+		        // Get the id of the one who last modified this
+		        $extraRecipients[] = $item->modified_by;
+	        }
+
+	        // Remove users with locked input box from the extra recipients
+	        if (!empty($extraRecipients)) {
+		        $extraRecipients = $this->removeLocked($extraRecipients);
+	        }
+
+	        // merge the extra recipients with the other users
+	        $userIdsPlus = array_unique(array_merge($userIds, $extraRecipients));
 
 	        // Send Email to receivers
             foreach ($userIdsPlus as $user_id) {

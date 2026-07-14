@@ -56,6 +56,30 @@
 				<option value="0">JNO</option>
 				<option value="1">JYES</option>
 			</field>
+			<field
+				name="notification_send_modified"
+				type="radio"
+				label="PLG_WORKFLOW_NOTIFICATIONEXT_SEND_MODIFIED_LABEL"
+				layout="joomla.form.field.radio.switcher"
+				default="1"
+				filter="boolean"
+				showon="notification_send_mail:1"
+			>
+				<option value="0">JNO</option>
+				<option value="1">JYES</option>
+			</field>
+			<field
+				name="notification_send_current_user"
+				type="radio"
+				label="PLG_WORKFLOW_NOTIFICATIONEXT_SEND_CURRENT_USER_LABEL"
+				layout="joomla.form.field.radio.switcher"
+				default="1"
+				filter="boolean"
+				showon="notification_send_mail:1"
+			>
+				<option value="0">JNO</option>
+				<option value="1">JYES</option>
+			</field>
 
 		</fieldset>
 	</fields>
