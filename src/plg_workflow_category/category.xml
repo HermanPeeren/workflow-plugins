@@ -13,7 +13,6 @@
 	<files>
 		<folder>forms</folder>
 		<folder>language</folder>
-		<folder>layouts</folder>
 		<folder>src</folder>
 		<folder plugin="category">services</folder>
 	</files>
