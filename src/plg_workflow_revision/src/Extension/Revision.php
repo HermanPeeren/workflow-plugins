@@ -86,8 +86,9 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            'onContentPrepareForm'      => 'onContentPrepareForm',
-            'onWorkflowAfterTransition' => 'onWorkflowAfterTransition'
+            'onContentPrepareForm'       => 'onContentPrepareForm',
+            'onWorkflowBeforeTransition' => 'onWorkflowBeforeTransition',
+            'onWorkflowAfterTransition'  => 'onWorkflowAfterTransition'
         ];
     }
 
@@ -111,6 +112,39 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     }
 
     /**
+     * Don't do this transition if the original item is already in revision.
+     * A message is shown that the transition cannot be run.
+     *
+     * @param   WorkflowTransitionEvent  $event  The workflow event being processed.
+     *
+     * @return   void
+     */
+    public function onWorkflowBeforeTransition(WorkflowTransitionEvent $event):void
+    {
+        $context = $event->getArgument('extension');
+        $transition = $event->getArgument('transition');
+        $pks = $event->getArgument('pks');
+
+        if (!$this->isSupported($context)) {
+            return;
+        }
+
+        // We want some revision.
+        if ($transition->options['revision_category']) {
+
+            // For all item primary keys: check if this item is not already in revision.
+            foreach ($pks as $pk) {
+	            // If this item is not in the revision table, $revisionInfoPkOriginal will be null
+	            $revisionInfoPkOriginal = $this->revisionInfoOriginal($context, $pk);
+	            if (!is_null($revisionInfoPkOriginal)) {
+		            // Item is already in revision, stop the transition.
+					$event->setStopTransition();
+	            }
+            }
+        }
+    }
+
+    /**
      * Put the copied article in the correct revision category (or copy back to original).
      *
      * @param   WorkflowTransitionEvent  $event  The workflow event being processed.
@@ -121,7 +155,6 @@ final class Revision extends CMSPlugin implements SubscriberInterface
     {
         $context = $event->getArgument('extension');
         // should check if valid context com_extensionname.tablename and there must be a category id in the table
-        $extensionName = $event->getArgument('extensionName');
         $transition = $event->getArgument('transition');
         $pks = $event->getArgument('pks');
 
