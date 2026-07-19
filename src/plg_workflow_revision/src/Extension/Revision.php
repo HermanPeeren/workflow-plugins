@@ -30,8 +30,8 @@ use Joomla\Event\SubscriberInterface;
  */
 final class Revision extends CMSPlugin implements SubscriberInterface
 {
-    use WorkflowPluginTrait;
     use DatabaseAwareTrait;
+	use WorkflowPluginTrait;
 
     /**
      * The id of the Revision Draft category (as set in the parameters of the plugin).
@@ -137,8 +137,13 @@ final class Revision extends CMSPlugin implements SubscriberInterface
 	            // If this item is not in the revision table, $revisionInfoPkOriginal will be null
 	            $revisionInfoPkOriginal = $this->revisionInfoOriginal($context, $pk);
 	            if (!is_null($revisionInfoPkOriginal)) {
-		            // Item is already in revision, stop the transition.
+		            // Item is already in revision, stop the transition and show a message why.
 					$event->setStopTransition();
+
+					// Show a warning.
+		            $message = $this->getApplication()->getLanguage()->_('PLG_WORKFLOW_REVISION_MESSAGE_ALREADY_IN_REVISION');
+		            $this->getApplication()->enqueueMessage($message, 'warning');
+					// You could check if it is in revision by the current user or not, to provide more information.
 	            }
             }
         }
