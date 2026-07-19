@@ -216,7 +216,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
         $app = $this->getApplication();
 
         if (!\is_object($transition) || !($transition->options instanceof Registry)) {
-            $app->enqueueMessage('PLG_WORKFLOW_CATEGORY_INVALID_TRANSITION');
+            $app->enqueueMessage('PLG_WORKFLOW_CATEGORY_INVALID_TRANSITION'); // HP: this language constant will stay untranslated
             return;
         }
 
@@ -253,12 +253,17 @@ final class Category extends CMSPlugin implements SubscriberInterface
         $app    = $this->getApplication();
 
         try {
-            $component = $this->getApplication()->bootComponent('com_content');
+            $component = $this->getApplication()->bootComponent('com_content');    // HP: only for com_content
             $modelName = $component->getModelName('com_workflow.article'); // HP: not necessary, leave out.
             // And: why com_workflow as first part? And: getModelName() is ContentComponent-specific.
 
+	        // Better: list($componentName, $tableName)  = explode('.', $context);
+
             $articleTable = $component->getMVCFactory()->createModel($modelName, $this->getApplication()->getName(), ['ignore_request' => true])
                 ->getTable(); // HP: directly: $articleTable = $component->getMVCFactory()->createTable('Article', 'Administrator');
+
+	        // Better: $articleTable = $this->getApplication()->bootComponent($componentName)->getMVCFactory()->createTable($tableName);
+
             if (!$articleTable->load($pk)) {
                 $app->enqueueMessage(Text::sprintf('PLG_WORKFLOW_CATEGORY_ARTICLE_NOT_FOUND', $pk), 'warning');
                 return false;
@@ -295,7 +300,7 @@ final class Category extends CMSPlugin implements SubscriberInterface
      *
      * @param   string  $context
      *
-     * @return   boolean// HP: add return type to method
+     * @return   boolean // HP: add return type to method
      *
      * @since   __DEPLOY_VERSION__
      */
