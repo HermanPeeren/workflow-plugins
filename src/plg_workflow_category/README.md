@@ -8,4 +8,6 @@ This is an installable version of the core plugin that was proposed in [PR #4596
 
 I added some comments for improvement to the code in this repo.
 
+**A default category should be set, for none is given in the basic stage, and none can be set, while a category is required!!!**
+
 This plugin was slightly edited used for the workflow of the User Guide and the Joomla Community Magazine.
