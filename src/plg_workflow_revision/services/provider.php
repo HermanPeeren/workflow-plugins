@@ -30,14 +30,14 @@ return new class () implements ServiceProviderInterface {
     {
         $container->set(
             PluginInterface::class,
-            function (Container $container) {
+	        $container->lazy(Revision::class, function (Container $container) {
                 $plugin     = new Revision(
                     (array) PluginHelper::getPlugin('workflow', 'revision')
                 );
                 $plugin->setApplication(Factory::getApplication());
                 $plugin->setDatabase($container->get(DatabaseInterface::class));
                 return $plugin;
-            }
+            })
         );
     }
 };
